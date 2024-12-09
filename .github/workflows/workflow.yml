@@ -53,4 +53,4 @@ jobs:
           az deployment group create \
             --resource-group aguadamillas_students_1 \
             --template-file main.bicep \
-            --parameters name='myUniqueAcrName' location='East US' acrAdminUserEnabled=true
+            --parameters main.parameters.json
