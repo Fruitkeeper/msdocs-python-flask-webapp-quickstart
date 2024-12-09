@@ -51,6 +51,6 @@ jobs:
       - name: Deploy Bicep Template
         run: |
           az deployment group create \
-            --resource-group aguadamillas_students_1 \
+            --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV \
             --template-file main.bicep \
             --parameters main.parameters.json
