@@ -1,0 +1,31 @@
+name: Deploy Bicep Template
+
+on:
+  push:
+    branches:
+      - main  # Change this to your default branch if different
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Azure CLI
+        uses: azure/setup-azure-cli@v1
+        with:
+          azure-cli-version: '2.30.0'  # Specify the version you need
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Bicep Template
+        run: |
+          az deployment group create \
+            --resource-group aguadamillas_students_1 \
+            --template-file main.bicep \
+            --parameters name='myUniqueAcrName' location='East US' acrAdminUserEnabled=true
