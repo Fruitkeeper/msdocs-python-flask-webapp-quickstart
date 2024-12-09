@@ -27,7 +27,7 @@ jobs:
       - name: Build Bicep Template
         run: |
           # Validate the Bicep template
-          az bicep build --file main.bicep --out-file main.json
+          az bicep build --file main.bicep
 
   deploy:
     runs-on: ubuntu-latest
