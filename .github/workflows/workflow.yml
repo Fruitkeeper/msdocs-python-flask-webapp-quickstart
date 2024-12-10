@@ -83,8 +83,8 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build . -t <registry-name>.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
-          docker tag DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }} <registry-name>.azurecr.io/my-app:latest
+          docker build . -t DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
+          docker tag DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }} DuxAppacr.azurecr.io/my-app:latest
           docker push DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
           docker push DuxAppacr.azurecr.io/my-app:latest
 
