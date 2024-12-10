@@ -63,14 +63,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Install Azure CLI
         run: |
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - name: Login to Azure
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
 
       - name: Login to Azure Container Registry
         run: |
@@ -81,10 +84,12 @@ jobs:
         run: |
           echo "IMAGE_VERSION=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_ENV
 
-      - name: Build and Push Docker Image
+      - name: Build Docker Image
         run: |
           docker build . -t DuxAppacr.azurecr.io/my-app:latest
-          docker tag DuxAppacr.azurecr.io/my-app:latest DuxAppacr.azurecr.io/my-app:latest
+
+      - name: Push Docker Image
+        run: |
           docker push DuxAppacr.azurecr.io/my-app:latest
 
   # Job to deploy Docker image to Azure Web App
