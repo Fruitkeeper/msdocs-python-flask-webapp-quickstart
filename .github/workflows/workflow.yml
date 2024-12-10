@@ -1,7 +1,7 @@
 name: Build and Deploy Bicep Template and Docker Image
 
 env:
-  REGISTRY_NAME: 'duxappacr'
+  REGISTRY_NAME: 'DuxAppacr'
   IMAGE_VERSION: ''
 
 on:
@@ -84,9 +84,9 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           docker build . -t <registry-name>.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
-          docker tag <registry-name>.azurecr.io/my-app:${{ steps.image-version.outputs.version }} <registry-name>.azurecr.io/my-app:latest
-          docker push <registry-name>.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
-          docker push <registry-name>.azurecr.io/my-app:latest
+          docker tag DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }} <registry-name>.azurecr.io/my-app:latest
+          docker push DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
+          docker push DuxAppacr.azurecr.io/my-app:latest
 
   # Job to deploy Docker image to Azure Web App
   deploy-docker:
