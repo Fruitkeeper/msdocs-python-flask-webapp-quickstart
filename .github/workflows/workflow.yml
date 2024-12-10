@@ -74,7 +74,7 @@ jobs:
 
       - name: Login to Azure Container Registry
         run: |
-          az acr login --name DuxAppacr  # Using your actual registry name
+          az acr login --name DuxAppacr
 
       - name: Set Image Version
         id: image-version
@@ -83,9 +83,8 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build . -t DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
-          docker tag DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }} DuxAppacr.azurecr.io/my-app:latest
-          docker push DuxAppacr.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
+          docker build . -t DuxAppacr.azurecr.io/my-app:latest
+          docker tag DuxAppacr.azurecr.io/my-app:latest DuxAppacr.azurecr.io/my-app:latest
           docker push DuxAppacr.azurecr.io/my-app:latest
 
   # Job to deploy Docker image to Azure Web App
