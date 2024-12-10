@@ -75,6 +75,10 @@ jobs:
         run: |
           az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
 
+      - name: Check Azure Login
+        run: |
+          az account show
+
       - name: Login to Azure Container Registry
         run: |
           az acr login --name DuxAppacr
