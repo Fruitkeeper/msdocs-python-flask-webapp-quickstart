@@ -74,7 +74,7 @@ jobs:
 
       - name: Login to Azure Container Registry
         run: |
-          az acr login --name your_registry_name  # Replace with your actual registry name
+          az acr login --name DuxAppacr  # Using your actual registry name
 
       - name: Set Image Version
         id: image-version
