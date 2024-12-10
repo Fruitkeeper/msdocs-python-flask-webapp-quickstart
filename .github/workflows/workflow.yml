@@ -75,13 +75,21 @@ jobs:
         run: |
           az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
 
-      - name: Check Azure Login
+      - name: Check Azure CLI Version
         run: |
-          az account show
+          az --version
+
+      - name: Get ACR Credentials
+        id: acr-credentials
+        run: |
+          ACR_USERNAME=$(az acr credential show --name DuxAppacr --query "username" -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name DuxAppacr --query "passwords[0].value" -o tsv)
+          echo "ACR_USERNAME=${ACR_USERNAME}" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=${ACR_PASSWORD}" >> $GITHUB_ENV
 
       - name: Login to Azure Container Registry
         run: |
-          az acr login --name DuxAppacr
+          echo "${{ env.ACR_PASSWORD }}" | docker login DuxAppacr.azurecr.io -u "${{ env.ACR_USERNAME }}" --password-stdin
 
       - name: Set Image Version
         id: image-version
@@ -112,3 +120,7 @@ jobs:
         with:
           app-name: "duxapp-app"
           images: "${{ env.REGISTRY_NAME }}.azurecr.io/my-app:${{ env.IMAGE_VERSION }}"
+
+      - name: Check Azure CLI Version
+        run: |
+          az --version
