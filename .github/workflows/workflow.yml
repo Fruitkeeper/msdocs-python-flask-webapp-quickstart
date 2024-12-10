@@ -1,4 +1,8 @@
-name: Build and Deploy Bicep Template
+name: Build and Deploy Bicep Template and Docker Image
+
+env:
+  REGISTRY_NAME: 'duxappacr'
+  IMAGE_VERSION: ''
 
 on:
   push:
@@ -6,7 +10,8 @@ on:
       - main  # Change this to your default branch if different
 
 jobs:
-  build:
+  # Job to build the Bicep template
+  build-bicep:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,19 +34,14 @@ jobs:
           # Validate the Bicep template
           az bicep build --file main.bicep
 
-  deploy:
+  # Job to deploy the Bicep template
+  deploy-bicep:
     runs-on: ubuntu-latest
-    needs: build  # Ensure this job runs after the build job
+    needs: build-bicep  # Ensure this job runs after the Bicep build job
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: Set up Azure CLI
-        uses: azure/cli@v1.0.7
-        with:
-          inlineScript: |
-            az version
 
       - name: Login to Azure
         uses: azure/login@v1
@@ -52,5 +52,51 @@ jobs:
         run: |
           az deployment group create \
             --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV \
-            --template-file main.json \
+            --template-file main.bicep \
             --parameters main.parameters.json
+
+  # Job to build and push Docker image
+  build-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to Azure Container Registry
+        run: |
+          az acr login --name <registry-name>  # Replace <registry-name> with your Azure Container Registry name
+
+      - name: Set Image Version
+        id: image-version
+        run: |
+          echo "IMAGE_VERSION=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_ENV
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build . -t <registry-name>.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
+          docker tag <registry-name>.azurecr.io/my-app:${{ steps.image-version.outputs.version }} <registry-name>.azurecr.io/my-app:latest
+          docker push <registry-name>.azurecr.io/my-app:${{ steps.image-version.outputs.version }}
+          docker push <registry-name>.azurecr.io/my-app:latest
+
+  # Job to deploy Docker image to Azure Web App
+  deploy-docker:
+    runs-on: ubuntu-latest
+    needs: build-docker  # Ensure this job runs after the Docker build job
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Docker Image to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: "duxapp-app"
+          images: "${{ env.REGISTRY_NAME }}.azurecr.io/my-app:${{ env.IMAGE_VERSION }}"
