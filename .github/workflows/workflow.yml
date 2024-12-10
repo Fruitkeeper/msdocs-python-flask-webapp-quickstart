@@ -68,9 +68,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
       - name: Login to Azure Container Registry
         run: |
-          az acr login --name <registry-name>  # Replace <registry-name> with your Azure Container Registry name
+          az acr login --name your_registry_name  # Replace with your actual registry name
 
       - name: Set Image Version
         id: image-version
