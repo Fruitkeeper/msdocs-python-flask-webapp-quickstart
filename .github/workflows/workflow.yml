@@ -52,5 +52,5 @@ jobs:
         run: |
           az deployment group create \
             --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV \
-            --template-file main.bicep \
+            --template-file main.json \
             --parameters main.parameters.json
