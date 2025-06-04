@@ -19,11 +19,15 @@ az ad sp create-for-rbac --name "flask-app-deployment" --role contributor \
   --scopes /subscriptions/{subscription-id} --sdk-auth
 ```
 
-2. **Note down these values** for GitHub Secrets:
-   - `clientId` → `AZURE_CLIENT_ID`
-   - `clientSecret` → `AZURE_CLIENT_SECRET`
-   - `subscriptionId` → `AZURE_SUBSCRIPTION_ID`
-   - `tenantId` → `AZURE_TENANT_ID`
+2. **Note down the output** for GitHub Secrets:
+```json
+{
+  "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "clientSecret": "your-client-secret",
+  "subscriptionId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+}
+```
 
 ## 🔑 GitHub Secrets Configuration
 
@@ -31,10 +35,11 @@ In your GitHub repository, go to **Settings > Secrets and variables > Actions** 
 
 | Secret Name | Description | Value |
 |-------------|-------------|--------|
-| `AZURE_SUBSCRIPTION_ID` | Your Azure subscription ID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
-| `AZURE_TENANT_ID` | Your Azure tenant ID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
-| `AZURE_CLIENT_ID` | Service principal client ID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
-| `AZURE_CLIENT_SECRET` | Service principal client secret | `your-client-secret` |
+| `AZURE_CREDENTIALS` | Complete JSON output from service principal creation | `{"clientId":"...","clientSecret":"...","subscriptionId":"...","tenantId":"..."}` |
+| `AZURE_CLIENT_ID` | Service principal client ID (for Docker registry) | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
+| `AZURE_CLIENT_SECRET` | Service principal client secret (for Docker registry) | `your-client-secret` |
+
+**Important**: Make sure the `AZURE_CREDENTIALS` JSON is properly formatted without any trailing commas.
 
 ## 📁 Files Created/Modified
 
@@ -144,18 +149,32 @@ You'll know the deployment is successful when:
 ### Common Issues
 
 1. **Authentication Errors**
-   - Verify GitHub Secrets are correctly set
-   - Check Service Principal permissions
+   ```
+   Error: Login failed with Error: Ensure 'subscription-id' is supplied
+   ```
+   **Solution**: 
+   - Verify `AZURE_CREDENTIALS` secret is correctly formatted JSON
+   - Ensure no trailing commas in the JSON
+   - Check that the service principal has contributor permissions
 
-2. **Resource Group Not Found**
+2. **Invalid JSON Format**
+   ```
+   Error: SyntaxError: Expected double-quoted property name in JSON at position 240
+   ```
+   **Solution**: 
+   - Verify `AZURE_CREDENTIALS` JSON format
+   - Remove any trailing commas
+   - Ensure all property names are double-quoted
+
+3. **Resource Group Not Found**
    - Ensure `aguadamillas_students_1` resource group exists
    - Update `main.parameters.json` if using different resource group
 
-3. **Container Build Failures**
+4. **Container Build Failures**
    - Check Dockerfile syntax
    - Verify all required files are present
 
-4. **Application Not Starting**
+5. **Application Not Starting**
    - Check Web App logs in Azure Portal
    - Verify Gunicorn configuration
    - Ensure port 5000 is properly exposed
@@ -164,6 +183,7 @@ You'll know the deployment is successful when:
 
 ✅ **Azure CLI Action Fixed**: Now using `azure/cli@v2` instead of the invalid `azure/setup-cli@v1`
 ✅ **Single Workflow**: Simplified from 2 separate workflows to 1 unified workflow
+✅ **Service Principal Authentication**: Using proven `creds` method like your working workflow
 ✅ **Proper Dependencies**: Infrastructure deploys first, then application deployment follows
 
 ### Getting Help
@@ -208,6 +228,15 @@ After successful deployment:
 - Choose dev/staging/prod environment
 - Each gets unique resource names
 - Supports parallel environments
+
+## 🔒 Authentication Method
+
+This setup uses **Service Principal + Secret** authentication (same as your working workflow). This is:
+- ✅ **Simpler** to set up (no OIDC configuration needed)
+- ✅ **Proven** to work with your current setup
+- ✅ **Compatible** with your existing secrets
+
+If you want to upgrade to OIDC authentication later for enhanced security, you can follow Azure's OIDC documentation.
 
 ---
 
