@@ -64,13 +64,14 @@ infra/
 ### CI/CD Files
 ```
 .github/workflows/
-├── deploy-infrastructure.yml               ✅ Created - Infrastructure deployment
-└── build-and-deploy.yml                   ✅ Created - Application deployment
+└── deploy.yml                              ✅ Created - Unified deployment workflow
 ```
 
 ## 🎯 Deployment Steps
 
-### Step 1: Deploy Infrastructure
+### Step 1: Deploy via Single Workflow
+
+The unified workflow handles both infrastructure and application deployment:
 
 1. **Push to trigger deployment**:
 ```bash
@@ -81,22 +82,29 @@ git push origin main
 
 2. **Or manually trigger** via GitHub Actions:
    - Go to **Actions** tab in GitHub
-   - Select **Deploy Infrastructure** workflow
+   - Select **Deploy Flask Application** workflow
    - Click **Run workflow**
-   - Choose environment (dev/staging/prod)
+   - Choose options:
+     - **Environment**: dev/staging/prod
+     - **Skip infrastructure deployment**: Leave unchecked for first deployment
 
-### Step 2: Verify Infrastructure Deployment
+### Step 2: Workflow Features
+
+The single workflow provides:
+
+- **Infrastructure Deployment**: Creates all Azure resources
+- **Application Build**: Builds and pushes Docker image
+- **Application Deployment**: Deploys to Azure Web App
+- **Health Checks**: Validates deployment success
+- **Skip Options**: Can skip infrastructure for app-only deployments
+
+### Step 3: Verify Deployment
 
 The workflow will create:
 - ✅ **Resource Group**: `aguadamillas_students_1`
 - ✅ **Container Registry**: `cr{uniqueToken}`
 - ✅ **App Service Plan**: `plan-{uniqueToken}`
 - ✅ **Web App**: `app-{uniqueToken}`
-
-### Step 3: Application Deployment
-
-1. **Automatic deployment**: Application deploys automatically after infrastructure
-2. **Manual deployment**: Use **Build and Deploy Application** workflow
 
 ### Step 4: Access Your Application
 
@@ -125,8 +133,8 @@ curl https://<app-name>.azurewebsites.net
 
 You'll know the deployment is successful when:
 
-1. ✅ **Infrastructure workflow** completes without errors
-2. ✅ **Build and Deploy workflow** completes without errors
+1. ✅ **Infrastructure job** completes without errors
+2. ✅ **Build and Deploy job** completes without errors
 3. ✅ **Web App** responds to HTTP requests
 4. ✅ **Container logs** show Gunicorn starting successfully
 5. ✅ **Health check** returns 200 OK
@@ -151,6 +159,12 @@ You'll know the deployment is successful when:
    - Check Web App logs in Azure Portal
    - Verify Gunicorn configuration
    - Ensure port 5000 is properly exposed
+
+### Fixed Issues
+
+✅ **Azure CLI Action Fixed**: Now using `azure/cli@v2` instead of the invalid `azure/setup-cli@v1`
+✅ **Single Workflow**: Simplified from 2 separate workflows to 1 unified workflow
+✅ **Proper Dependencies**: Infrastructure deploys first, then application deployment follows
 
 ### Getting Help
 
@@ -178,6 +192,22 @@ After successful deployment:
 3. **Configure auto-scaling** based on load
 4. **Set up backup and disaster recovery**
 5. **Implement blue-green deployment** for zero-downtime updates
+
+## 🔄 Deployment Options
+
+### Full Deployment (Default)
+- Deploys infrastructure and application
+- Use when setting up for the first time
+
+### Application-Only Deployment
+- Run workflow manually
+- Check "Skip infrastructure deployment"
+- Use for application updates only
+
+### Environment-Specific Deployment
+- Choose dev/staging/prod environment
+- Each gets unique resource names
+- Supports parallel environments
 
 ---
 
