@@ -7,6 +7,15 @@
       },
       "location": {
         "value": "${AZURE_LOCATION}"
+      },
+      "resourceGroupName": {
+        "value": "aguadamillas_students_1"
+      },
+      "containerRegistryImageName": {
+        "value": "flask-app"
+      },
+      "containerRegistryImageVersion": {
+        "value": "latest"
       }
     }
 }
