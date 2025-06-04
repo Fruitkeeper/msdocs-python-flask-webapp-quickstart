@@ -57,9 +57,5 @@ output name string = containerRegistry.name
 @description('The login server URL of the Container Registry')
 output loginServer string = containerRegistry.properties.loginServer
 
-@description('The admin username of the Container Registry')
-output adminUsername string = acrAdminUserEnabled ? containerRegistry.listCredentials().username : ''
-
-@description('The admin password of the Container Registry')
-@secure()
-output adminPassword string = acrAdminUserEnabled ? containerRegistry.listCredentials().passwords[0].value : '' 
+// Note: ACR credentials are not exposed as outputs for security reasons
+// Use Azure CLI to retrieve credentials: az acr credential show --name <registry-name>

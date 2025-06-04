@@ -30,8 +30,8 @@ var abbrs = loadJsonContent('./abbreviations.json')
 // Tags that should be applied to all resources
 var tags = {
   'azd-env-name': environmentName
-  'project': 'flask-webapp'
-  'environment': environmentName
+  project: 'flask-webapp'
+  environment: environmentName
 }
 
 // Generate a unique token to be used in naming resources
@@ -106,18 +106,14 @@ module webApp './core/host/appservice-linux-container.bicep' = {
     appSettingsKeyValuePairs: {
       WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'false'
       DOCKER_REGISTRY_SERVER_URL: containerRegistry.outputs.loginServer
-      DOCKER_REGISTRY_SERVER_USERNAME: containerRegistry.outputs.adminUsername
-      DOCKER_REGISTRY_SERVER_PASSWORD: containerRegistry.outputs.adminPassword
+      // Note: DOCKER_REGISTRY_SERVER_USERNAME and DOCKER_REGISTRY_SERVER_PASSWORD will be set via Azure CLI during deployment
       WEBSITES_PORT: '5000'
       FLASK_ENV: 'production'
       PYTHONUNBUFFERED: '1'
     }
     tags: union(tags, { 'azd-service-name': 'web-app' })
   }
-  dependsOn: [
-    containerRegistry
-    appServicePlan
-  ]
+  // Removed explicit dependsOn as BICEP can infer dependencies from module references
 }
 
 // Outputs for use in other deployments or local development

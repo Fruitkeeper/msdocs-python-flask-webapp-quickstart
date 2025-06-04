@@ -80,18 +80,28 @@ jobs:
           ENV_NAME="${{ github.event.inputs.environment || 'dev' }}-${{ github.run_number }}"
           
           echo "Deploying infrastructure..."
-          DEPLOYMENT_OUTPUT=$(az deployment sub create \
+          
+          # Deploy and capture output to a file to avoid consumption issues
+          az deployment sub create \
             --location ${{ env.AZURE_LOCATION }} \
             --template-file ./infra/main.bicep \
             --parameters ./infra/main.parameters.json \
             --parameters environmentName=$ENV_NAME \
             --parameters location=${{ env.AZURE_LOCATION }} \
-            --output json)
+            --output json > deployment-output.json
           
-          # Extract outputs
-          REGISTRY_NAME=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_NAME.value')
-          REGISTRY_LOGIN_SERVER=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT.value')
-          WEB_APP_NAME=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.properties.outputs.AZURE_WEB_APP_NAME.value')
+          # Parse outputs from the file
+          REGISTRY_NAME=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_NAME.value')
+          REGISTRY_LOGIN_SERVER=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT.value')
+          WEB_APP_NAME=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_WEB_APP_NAME.value')
+          
+          # Validate outputs
+          if [ "$REGISTRY_NAME" = "null" ] || [ -z "$REGISTRY_NAME" ]; then
+            echo "❌ Failed to extract registry name from deployment output"
+            echo "Deployment output:"
+            cat deployment-output.json
+            exit 1
+          fi
           
           echo "registryName=$REGISTRY_NAME" >> $GITHUB_OUTPUT
           echo "registryLoginServer=$REGISTRY_LOGIN_SERVER" >> $GITHUB_OUTPUT
@@ -100,12 +110,23 @@ jobs:
           echo "✅ Infrastructure deployment completed"
           echo "📝 Container Registry: $REGISTRY_NAME"
           echo "📝 Web App: $WEB_APP_NAME"
+          
+          # Set registry password via Azure CLI now that ACR is deployed
+          echo "🔑 Configuring Web App with ACR credentials..."
+          ACR_USERNAME=$(az acr credential show --name $REGISTRY_NAME --query "username" -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name $REGISTRY_NAME --query "passwords[0].value" -o tsv)
+          
+          az webapp config appsettings set \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name $WEB_APP_NAME \
+            --settings DOCKER_REGISTRY_SERVER_USERNAME="$ACR_USERNAME" DOCKER_REGISTRY_SERVER_PASSWORD="$ACR_PASSWORD"
+          
+          echo "✅ Web App configured with ACR credentials"
 
   # Job to build and push Docker image
   build-docker:
     runs-on: ubuntu-latest
-    needs: [deploy-bicep]
-    if: always() && (needs.deploy-bicep.result == 'success' || needs.deploy-bicep.result == 'skipped')
+    # Removed dependency on deploy-bicep to run in parallel with build-bicep
     outputs:
       imageTag: ${{ steps.image-info.outputs.imageTag }}
 
@@ -124,18 +145,13 @@ jobs:
       - name: Get Container Registry info
         id: registry-info
         run: |
-          # Find the container registry in the resource group
-          if [ "${{ needs.deploy-bicep.result }}" = "success" ]; then
-            REGISTRY_NAME="${{ needs.deploy-bicep.outputs.registryName }}"
-            REGISTRY_LOGIN_SERVER="${{ needs.deploy-bicep.outputs.registryLoginServer }}"
-          else
-            # If infrastructure was skipped, find existing registry
-            REGISTRY_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].name' -o tsv)
-            REGISTRY_LOGIN_SERVER=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].loginServer' -o tsv)
-          fi
+          # Find existing registry in the resource group for parallel execution
+          REGISTRY_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].name' -o tsv)
+          REGISTRY_LOGIN_SERVER=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query '[0].loginServer' -o tsv)
           
           if [ -z "$REGISTRY_NAME" ]; then
             echo "❌ No Container Registry found in resource group ${{ env.RESOURCE_GROUP }}"
+            echo "Please ensure infrastructure is deployed first or run infrastructure deployment"
             exit 1
           fi
           
@@ -201,7 +217,7 @@ jobs:
   deploy-docker:
     runs-on: ubuntu-latest
     needs: [deploy-bicep, build-docker]
-    if: always() && needs.build-docker.result == 'success'
+    if: always() && needs.build-docker.result == 'success' && (needs.deploy-bicep.result == 'success' || needs.deploy-bicep.result == 'skipped')
 
     steps:
       - name: Login to Azure
@@ -255,7 +271,7 @@ jobs:
               sleep 15
             fi
             
-            if [ i -eq 10 ]; then
+            if [ $i -eq 10 ]; then
               echo "❌ Application is not responding after 10 attempts"
               exit 1
             fi
