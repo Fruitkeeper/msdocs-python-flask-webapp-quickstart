@@ -80,48 +80,59 @@ jobs:
           ENV_NAME="${{ github.event.inputs.environment || 'dev' }}-${{ github.run_number }}"
           
           echo "Deploying infrastructure..."
+          echo "Environment name: $ENV_NAME"
+          echo "Resource group: ${{ env.RESOURCE_GROUP }}"
           
-          # Deploy and capture output to a file to avoid consumption issues
-          az deployment sub create \
+          # Deploy infrastructure with proper error handling
+          if az deployment sub create \
             --location ${{ env.AZURE_LOCATION }} \
             --template-file ./infra/main.bicep \
             --parameters ./infra/main.parameters.json \
             --parameters environmentName=$ENV_NAME \
             --parameters location=${{ env.AZURE_LOCATION }} \
-            --output json > deployment-output.json
-          
-          # Parse outputs from the file
-          REGISTRY_NAME=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_NAME.value')
-          REGISTRY_LOGIN_SERVER=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT.value')
-          WEB_APP_NAME=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_WEB_APP_NAME.value')
-          
-          # Validate outputs
-          if [ "$REGISTRY_NAME" = "null" ] || [ -z "$REGISTRY_NAME" ]; then
-            echo "❌ Failed to extract registry name from deployment output"
+            --parameters resourceGroupName=${{ env.RESOURCE_GROUP }} \
+            --output json > deployment-output.json; then
+            
+            echo "✅ Deployment completed successfully"
+            
+            # Parse outputs from the file
+            REGISTRY_NAME=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_NAME.value')
+            REGISTRY_LOGIN_SERVER=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT.value')
+            WEB_APP_NAME=$(cat deployment-output.json | jq -r '.properties.outputs.AZURE_WEB_APP_NAME.value')
+            
+            # Validate outputs
+            if [ "$REGISTRY_NAME" = "null" ] || [ -z "$REGISTRY_NAME" ]; then
+              echo "❌ Failed to extract registry name from deployment output"
+              echo "Deployment output:"
+              cat deployment-output.json
+              exit 1
+            fi
+            
+            echo "registryName=$REGISTRY_NAME" >> $GITHUB_OUTPUT
+            echo "registryLoginServer=$REGISTRY_LOGIN_SERVER" >> $GITHUB_OUTPUT
+            echo "webAppName=$WEB_APP_NAME" >> $GITHUB_OUTPUT
+            
+            echo "📝 Container Registry: $REGISTRY_NAME"
+            echo "📝 Web App: $WEB_APP_NAME"
+            
+            # Set registry credentials via Azure CLI now that ACR is deployed
+            echo "🔑 Configuring Web App with ACR credentials..."
+            ACR_USERNAME=$(az acr credential show --name $REGISTRY_NAME --query "username" -o tsv)
+            ACR_PASSWORD=$(az acr credential show --name $REGISTRY_NAME --query "passwords[0].value" -o tsv)
+            
+            az webapp config appsettings set \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --name $WEB_APP_NAME \
+              --settings DOCKER_REGISTRY_SERVER_USERNAME="$ACR_USERNAME" DOCKER_REGISTRY_SERVER_PASSWORD="$ACR_PASSWORD"
+            
+            echo "✅ Web App configured with ACR credentials"
+            
+          else
+            echo "❌ Deployment failed"
             echo "Deployment output:"
-            cat deployment-output.json
+            cat deployment-output.json 2>/dev/null || echo "No output file created"
             exit 1
           fi
-          
-          echo "registryName=$REGISTRY_NAME" >> $GITHUB_OUTPUT
-          echo "registryLoginServer=$REGISTRY_LOGIN_SERVER" >> $GITHUB_OUTPUT
-          echo "webAppName=$WEB_APP_NAME" >> $GITHUB_OUTPUT
-          
-          echo "✅ Infrastructure deployment completed"
-          echo "📝 Container Registry: $REGISTRY_NAME"
-          echo "📝 Web App: $WEB_APP_NAME"
-          
-          # Set registry password via Azure CLI now that ACR is deployed
-          echo "🔑 Configuring Web App with ACR credentials..."
-          ACR_USERNAME=$(az acr credential show --name $REGISTRY_NAME --query "username" -o tsv)
-          ACR_PASSWORD=$(az acr credential show --name $REGISTRY_NAME --query "passwords[0].value" -o tsv)
-          
-          az webapp config appsettings set \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name $WEB_APP_NAME \
-            --settings DOCKER_REGISTRY_SERVER_USERNAME="$ACR_USERNAME" DOCKER_REGISTRY_SERVER_PASSWORD="$ACR_PASSWORD"
-          
-          echo "✅ Web App configured with ACR credentials"
 
   # Job to build and push Docker image
   build-docker:
