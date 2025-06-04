@@ -1,7 +1,7 @@
 name: Build and Deploy Bicep Template and Docker Image
 
 env:
-  RESOURCE_GROUP: BCSAI2024-DEVOPS-STUDENTS-A-DEV
+  RESOURCE_GROUP: BCSAI2024-DEVOPS-STUDENTS-UAT
   REGISTRY_NAME: ''  # Will be set dynamically after infrastructure deployment
   IMAGE_NAME: flask-app
   AZURE_LOCATION: eastus
